@@ -1,11 +1,13 @@
 package com.exam.remoteexamination;
 
+import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.DatePicker;
@@ -29,6 +31,12 @@ import java.time.Period;
 import java.util.Calendar;
 import java.util.Locale;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+
 public class MainActivity extends AppCompatActivity {
 
     //UI Elements Classes
@@ -39,7 +47,9 @@ public class MainActivity extends AppCompatActivity {
     Button submit;
     Calendar cal;
     int year, month, day, difference;
+    String kasarian;
     DatePickerDialog datePicker;
+    AlertDialog.Builder gawa;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +84,9 @@ public class MainActivity extends AppCompatActivity {
 
             //for Calendar
         cal = Calendar.getInstance();
+
+            //for AlertDialog
+        gawa = new AlertDialog.Builder(MainActivity.this);
 
             //int values
         year = cal.get(Calendar.YEAR);
@@ -182,7 +195,75 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+    //For the selection of gender
+        gender.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                kasarian = String.valueOf(parent.getItemAtPosition(position));
+            }
 
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
+
+    //When we click on the submit button
+        submit.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Retrofit retro = new Retrofit.Builder()
+                        .baseUrl("https://run.mocky.io/v3/")
+                        .addConverterFactory(GsonConverterFactory.create())
+                        .build();
+                MockyService service = retro.create(MockyService.class);
+
+                DataModel dataModel = new DataModel(name.getText().toString(), email.getText().toString(), mobile.getText().toString(), difference, kasarian);
+
+                Call<DataModel> tawag = service.uploadData(dataModel);
+
+                tawag.enqueue(new Callback<DataModel>() {
+                    @Override
+                    public void onResponse(Call<DataModel> call, Response<DataModel> response) {
+                        if(response.isSuccessful()){
+                            gawa.setTitle("Data upload successful");
+                            gawa.setMessage("Data upload to endpoint is a success\n");
+                            gawa.setCancelable(true);
+                            gawa.show();
+                        }
+                    }
+                    @Override
+                    public void onFailure(Call<DataModel> call, Throwable t) {
+                        Toast.makeText(MainActivity.this, t.getMessage().toString(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+
+            }
+        });
+
+    //When changes occur
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl("https://run.mocky.io/v3/")
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        MockyService getService = retrofit.create(MockyService.class);
+        Call<DataModel> call = getService.getData();
+        call.enqueue(new Callback<DataModel>() {
+            @Override
+            public void onResponse(Call<DataModel> call, Response<DataModel> response) {
+                if(response.isSuccessful()){
+                    gawa.setTitle("Changes Detected");
+                    gawa.setMessage("Change has been detected");
+                    gawa.setCancelable(true);
+                    gawa.show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<DataModel> call, Throwable t) {
+
+            }
+        });
     }
 
 
